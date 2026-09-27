@@ -105,6 +105,29 @@
             </div>
           </div>
         </div>
+
+        <!-- CMYK Inputs -->
+        <div>
+          <span class="text-xs font-medium text-slate-500 mb-1 block">CMYK Værdier (0 - 100%)</span>
+          <div class="grid grid-cols-4 gap-1.5">
+            <div>
+              <span class="text-[10px] text-cyan-600 font-bold block mb-0.5">C (Cyan)</span>
+              <input type="number" id="cmyk-c" min="0" max="100" value="76" class="w-full text-center text-sm font-semibold py-1 px-1 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+            </div>
+            <div>
+              <span class="text-[10px] text-fuchsia-600 font-bold block mb-0.5">M (Magenta)</span>
+              <input type="number" id="cmyk-m" min="0" max="100" value="47" class="w-full text-center text-sm font-semibold py-1 px-1 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+            </div>
+            <div>
+              <span class="text-[10px] text-yellow-600 font-bold block mb-0.5">Y (Gul)</span>
+              <input type="number" id="cmyk-y" min="0" max="100" value="0" class="w-full text-center text-sm font-semibold py-1 px-1 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-600 font-bold block mb-0.5">K (Sort)</span>
+              <input type="number" id="cmyk-k" min="0" max="100" value="4" class="w-full text-center text-sm font-semibold py-1 px-1 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Actions Section -->
@@ -153,6 +176,10 @@
     const rgbR = document.getElementById('rgb-r');
     const rgbG = document.getElementById('rgb-g');
     const rgbB = document.getElementById('rgb-b');
+    const cmykC = document.getElementById('cmyk-c');
+    const cmykM = document.getElementById('cmyk-m');
+    const cmykY = document.getElementById('cmyk-y');
+    const cmykK = document.getElementById('cmyk-k');
     const hexDisplay = document.getElementById('hex-display');
     const addBtn = document.getElementById('add-btn');
     const removeBtn = document.getElementById('remove-btn');
@@ -190,6 +217,64 @@
       };
     }
 
+    // Convert RGB (0-255) to CMYK (0-100)
+    function rgbToCmyk(r, g, b) {
+      const rr = r / 255, gg = g / 255, bb = b / 255;
+      const k = 1 - Math.max(rr, gg, bb);
+      if (k === 1) return { c: 0, m: 0, y: 0, k: 100 };
+      const c = (1 - rr - k) / (1 - k);
+      const m = (1 - gg - k) / (1 - k);
+      const y = (1 - bb - k) / (1 - k);
+      return {
+        c: Math.round(c * 100),
+        m: Math.round(m * 100),
+        y: Math.round(y * 100),
+        k: Math.round(k * 100)
+      };
+    }
+
+    // Convert CMYK (0-100) to RGB (0-255)
+    function cmykToRgb(c, m, y, k) {
+      const cc = c / 100, mm = m / 100, yy = y / 100, kk = k / 100;
+      return {
+        r: Math.round(255 * (1 - cc) * (1 - kk)),
+        g: Math.round(255 * (1 - mm) * (1 - kk)),
+        b: Math.round(255 * (1 - yy) * (1 - kk))
+      };
+    }
+
+    // Update CMYK fields from current color
+    function updateCmykFromHex(hex) {
+      const rgb = hexToRgb(hex);
+      const cmyk = rgbToCmyk(rgb.r, rgb.g, rgb.b);
+      cmykC.value = cmyk.c;
+      cmykM.value = cmyk.m;
+      cmykY.value = cmyk.y;
+      cmykK.value = cmyk.k;
+    }
+
+    // Update color from CMYK Inputs
+    function updateFromCmyk() {
+      let c = parseFloat(cmykC.value) || 0;
+      let m = parseFloat(cmykM.value) || 0;
+      let y = parseFloat(cmykY.value) || 0;
+      let k = parseFloat(cmykK.value) || 0;
+
+      // Clamp CMYK values 0 - 100
+      c = Math.max(0, Math.min(100, c));
+      m = Math.max(0, Math.min(100, m));
+      y = Math.max(0, Math.min(100, y));
+      k = Math.max(0, Math.min(100, k));
+
+      const rgb = cmykToRgb(c, m, y, k);
+      const hex = rgbToHex(rgb.r, rgb.g, rgb.b).toUpperCase();
+      colorPicker.value = hex.toLowerCase();
+      hexDisplay.textContent = hex;
+      rgbR.value = rgb.r;
+      rgbG.value = rgb.g;
+      rgbB.value = rgb.b;
+    }
+
     // Toast Notification helper
     let toastTimeout;
     function showToast(msg) {
@@ -209,6 +294,7 @@
       rgbR.value = rgb.r;
       rgbG.value = rgb.g;
       rgbB.value = rgb.b;
+      updateCmykFromHex(hex);
     }
 
     // Update color from RGB Inputs
@@ -223,8 +309,9 @@
       b = Math.max(0, Math.min(255, b));
 
       const hex = rgbToHex(r, g, b).toUpperCase();
-      colorPicker.value = hex;
+      colorPicker.value = hex.toLowerCase();
       hexDisplay.textContent = hex;
+      updateCmykFromHex(hex);
     }
 
     // Current selected color in HEX format
@@ -360,6 +447,16 @@
         if (input.value === '' || parseInt(input.value) < 0) input.value = 0;
         if (parseInt(input.value) > 255) input.value = 255;
         updateFromRgb();
+      });
+    });
+
+    [cmykC, cmykM, cmykY, cmykK].forEach(input => {
+      input.addEventListener('input', updateFromCmyk);
+      // Ensure values remain within 0-100 boundary on change
+      input.addEventListener('blur', () => {
+        if (input.value === '' || parseFloat(input.value) < 0) input.value = 0;
+        if (parseFloat(input.value) > 100) input.value = 100;
+        updateFromCmyk();
       });
     });
 
