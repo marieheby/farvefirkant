@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="da" class="h-full w-full overflow-hidden">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interaktiv Firkant-Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Custom CSS to handle perfect grid layout aspect and dynamic container */
+    #grid-container {
+      display: grid;
+      width: 100vw;
+      height: 100vh;
+      box-sizing: border-box;
+      transition: all 0.3s ease;
+    }
+
+    .square-tile {
+      transition: background-color 0.25s ease, transform 0.15s ease, box-shadow 0.15s ease;
+      position: relative;
+      user-select: none;
+    }
+
+    .square-tile:hover .tile-overlay {
+      opacity: 1;
+    }
+
+    .tile-overlay {
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(4px);
+    }
+
+    /* Custom scrollbar for settings if height is constrained */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(0,0,0,0.05);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(0,0,0,0.2);
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="h-full w-full overflow-hidden bg-slate-900 font-sans antialiased text-slate-800 select-none">
+
+  <!-- Container for tiles -->
+  <div id="grid-container"></div>
+
+  <!-- Floating Control Panel -->
+  <div id="control-panel" class="fixed top-4 left-4 z-50 bg-white/90 backdrop-blur-md border border-white/20 shadow-2xl rounded-2xl p-5 w-80 max-w-[calc(100vw-2rem)] transition-all duration-300">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center space-x-2">
+        <div class="p-2 bg-indigo-600 text-white rounded-lg shadow-sm">
+          <i class="fa-solid fa-border-all text-lg"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-slate-800 leading-tight">Firkanter</h1>
+          <p class="text-xs text-slate-500">Styr layout & farver</p>
+        </div>
+      </div>
+      <button id="toggle-panel-btn" class="text-slate-400 hover:text-slate-600 transition-colors p-1" title="Minimer panel">
+        <i class="fa-solid fa-chevron-up" id="toggle-icon"></i>
+      </button>
+    </div>
+
+    <div id="panel-content" class="space-y-4 custom-scrollbar max-h-[80vh] overflow-y-auto pr-1">
+
+      <!-- Color Picker Tool Section -->
+      <div class="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-3">
+        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider">
+          Vælg Farve
+        </label>
+
+        <!-- Native Color Picker + Hex Display -->
+        <div class="flex items-center space-x-3">
+          <div class="relative w-12 h-12 rounded-xl overflow-hidden border-2 border-white shadow-md cursor-pointer hover:scale-105 transition-transform">
+            <input type="color" id="color-picker" value="#3b82f6" class="absolute -top-2 -left-2 w-16 h-16 cursor-pointer border-0">
+          </div>
+          <div class="flex-1">
+            <div class="text-xs text-slate-400 font-medium">HEX-kode</div>
+            <div id="hex-display" class="font-mono font-bold text-slate-700 uppercase text-sm">#3B82F6</div>
+          </div>
+        </div>
+
+        <!-- RGB Inputs -->
+        <div>
+          <span class="text-xs font-medium text-slate-500 mb-1 block">RGB Værdier (0 - 255)</span>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <span class="text-[10px] text-red-500 font-bold block mb-0.5">R (Rød)</span>
+              <input type="number" id="rgb-r" min="0" max="255" value="59" class="w-full text-center text-sm font-semibold py-1 px-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+            </div>
+            <div>
+              <span class="text-[10px] text-green-500 font-bold block mb-0.5">G (Grøn)</span>
+              <input type="number" id="rgb-g" min="0" max="255" value="130" class="w-full text-center text-sm font-semibold py-1 px-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+            </div>
+            <div>
+              <span class="text-[10px] text-blue-500 font-bold block mb-0.5">B (Blå)</span>
+              <input type="number" id="rgb-b" min="0" max="255" value="246" class="w-full text-center text-sm font-semibold py-1 px-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions Section -->
+      <div class="space-y-2">
+        <button id="add-btn" class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium rounded-xl shadow-md shadow-indigo-200 transition-all flex items-center justify-center space-x-2">
+          <i class="fa-solid fa-plus text-sm"></i>
+          <span>Tilføj Firkant</span>
+        </button>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button id="remove-btn" class="py-2 px-3 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-medium text-sm rounded-xl transition-all flex items-center justify-center space-x-1.5 border border-slate-200">
+            <i class="fa-solid fa-minus text-xs"></i>
+            <span>Fjern Sidste</span>
+          </button>
+
+          <button id="clear-btn" class="py-2 px-3 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-600 font-medium text-sm rounded-xl transition-all flex items-center justify-center space-x-1.5 border border-rose-200">
+            <i class="fa-solid fa-trash-can text-xs"></i>
+            <span>Nulstil</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Info & Stats Footer -->
+      <div class="pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs text-slate-500">
+        <span>Antal firkanter:</span>
+        <span id="tile-count" class="font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">0</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Notification Toast Message -->
+  <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 bg-slate-800 text-white text-xs px-4 py-2 rounded-full shadow-lg opacity-0 pointer-events-none transition-opacity duration-300 flex items-center space-x-2">
+    <i class="fa-solid fa-circle-info text-indigo-400"></i>
+    <span id="toast-text">Besked</span>
+  </div>
+
+  <script>
+    // --- State Management ---
+    // Represents tiles on the screen with hex color strings
+    let tiles = [];
+
+    // DOM Elements
+    const gridContainer = document.getElementById('grid-container');
+    const colorPicker = document.getElementById('color-picker');
+    const rgbR = document.getElementById('rgb-r');
+    const rgbG = document.getElementById('rgb-g');
+    const rgbB = document.getElementById('rgb-b');
+    const hexDisplay = document.getElementById('hex-display');
+    const addBtn = document.getElementById('add-btn');
+    const removeBtn = document.getElementById('remove-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const tileCountEl = document.getElementById('tile-count');
+    const togglePanelBtn = document.getElementById('toggle-panel-btn');
+    const panelContent = document.getElementById('panel-content');
+    const toggleIcon = document.getElementById('toggle-icon');
+    const toast = document.getElementById('toast');
+    const toastText = document.getElementById('toast-text');
+
+    // Selected active tile index for applying color directly
+    let activeTileIndex = null;
+
+    // Color Helper Functions
+    function componentToHex(c) {
+      const hex = Math.max(0, Math.min(255, c)).toString(16);
+      return hex.length === 1 ? "0" + hex : hex;
+    }
+
+    function rgbToHex(r, g, b) {
+      return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
+    }
+
+    function hexToRgb(hex) {
+      let c = hex.replace('#', '');
+      if (c.length === 3) {
+        c = c.split('').map(char => char + char).join('');
+      }
+      const num = parseInt(c, 16);
+      return {
+        r: (num >> 16) & 255,
+        g: (num >> 8) & 255,
+        b: num & 255
+      };
+    }
+
+    // Toast Notification helper
+    let toastTimeout;
+    function showToast(msg) {
+      toastText.textContent = msg;
+      toast.classList.remove('opacity-0');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.add('opacity-0');
+      }, 2000);
+    }
+
+    // Update color from Color Picker Input
+    function updateFromPicker() {
+      const hex = colorPicker.value.toUpperCase();
+      hexDisplay.textContent = hex;
+      const rgb = hexToRgb(hex);
+      rgbR.value = rgb.r;
+      rgbG.value = rgb.g;
+      rgbB.value = rgb.b;
+    }
+
+    // Update color from RGB Inputs
+    function updateFromRgb() {
+      let r = parseInt(rgbR.value) || 0;
+      let g = parseInt(rgbG.value) || 0;
+      let b = parseInt(rgbB.value) || 0;
+
+      // Clamp RGB values 0 - 255
+      r = Math.max(0, Math.min(255, r));
+      g = Math.max(0, Math.min(255, g));
+      b = Math.max(0, Math.min(255, b));
+
+      const hex = rgbToHex(r, g, b).toUpperCase();
+      colorPicker.value = hex;
+      hexDisplay.textContent = hex;
+    }
+
+    // Current selected color in HEX format
+    function getCurrentColor() {
+      return colorPicker.value;
+    }
+
+    /**
+     * Calculates optimal grid columns and rows to fill 100% viewport smoothly
+     */
+    function updateGridDimensions() {
+      const count = tiles.length;
+      if (count === 0) {
+        gridContainer.style.gridTemplateColumns = 'none';
+        gridContainer.style.gridTemplateRows = 'none';
+        return;
+      }
+
+      const aspect = window.innerWidth / window.innerHeight;
+
+      // Compute number of columns & rows to maximize squares/proportions
+      let cols = Math.ceil(Math.sqrt(count * aspect));
+      let rows = Math.ceil(count / cols);
+
+      // Fine tune dimensions if extra empty space is generated
+      while ((cols - 1) * rows >= count) {
+        cols--;
+      }
+
+      gridContainer.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+      gridContainer.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+    }
+
+    // Render all tiles dynamically
+    function render() {
+      gridContainer.innerHTML = '';
+      updateGridDimensions();
+
+      tiles.forEach((color, index) => {
+        const tile = document.createElement('div');
+        tile.className = 'square-tile w-full h-full flex items-center justify-center relative overflow-hidden group';
+        tile.style.backgroundColor = color;
+
+        // Overlay element on hover/tap
+        const overlay = document.createElement('div');
+        overlay.className = 'tile-overlay absolute inset-0 flex items-center justify-center space-x-2 p-2';
+
+        // Action Button: Apply Current Selected Color
+        const applyBtn = document.createElement('button');
+        applyBtn.className = 'w-9 h-9 rounded-full bg-white/90 text-slate-800 hover:bg-white hover:scale-110 active:scale-95 transition-all shadow-lg flex items-center justify-center';
+        applyBtn.title = 'Anvend valgt farve';
+        applyBtn.innerHTML = '<i class="fa-solid fa-fill-drip text-sm"></i>';
+        applyBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          tiles[index] = getCurrentColor();
+          render();
+          showToast(`Farve opdateret på firkant #${index + 1}`);
+        });
+
+        // Action Button: Delete Tile
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'w-9 h-9 rounded-full bg-rose-600/90 text-white hover:bg-rose-600 hover:scale-110 active:scale-95 transition-all shadow-lg flex items-center justify-center';
+        deleteBtn.title = 'Fjern denne firkant';
+        deleteBtn.innerHTML = '<i class="fa-solid fa-xmark text-sm"></i>';
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          removeTileAtIndex(index);
+        });
+
+        // Add index badge for easy visual navigation
+        const badge = document.createElement('span');
+        badge.className = 'absolute top-2 left-2 bg-black/40 text-white/80 text-[10px] font-mono px-1.5 py-0.5 rounded backdrop-blur-sm pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity';
+        badge.textContent = `#${index + 1}`;
+
+        overlay.appendChild(applyBtn);
+        overlay.appendChild(deleteBtn);
+        tile.appendChild(badge);
+        tile.appendChild(overlay);
+
+        // Clicking anywhere on the tile applies current chosen color
+        tile.addEventListener('click', () => {
+          tiles[index] = getCurrentColor();
+          render();
+          showToast(`Farve opdateret på firkant #${index + 1}`);
+        });
+
+        gridContainer.appendChild(tile);
+      });
+
+      // Update counter UI
+      tileCountEl.textContent = tiles.length;
+    }
+
+    // Add new tile
+    function addTile(color = null) {
+      const tileColor = color || getCurrentColor();
+      tiles.push(tileColor);
+      render();
+    }
+
+    // Remove last tile
+    function removeLastTile() {
+      if (tiles.length > 0) {
+        tiles.pop();
+        render();
+      } else {
+        showToast('Ingen firkanter at fjerne');
+      }
+    }
+
+    // Remove specific tile
+    function removeTileAtIndex(index) {
+      tiles.splice(index, 1);
+      render();
+      showToast(`Firkant #${index + 1} fjernet`);
+    }
+
+    // Clear all tiles
+    function clearTiles() {
+      if (tiles.length === 0) return;
+      tiles = [];
+      render();
+      showToast('Alle firkanter er fjernet');
+    }
+
+    // Event Listeners for Color Controls
+    colorPicker.addEventListener('input', updateFromPicker);
+
+    [rgbR, rgbG, rgbB].forEach(input => {
+      input.addEventListener('input', updateFromRgb);
+      // Ensure values remain within 0-255 boundary on change
+      input.addEventListener('blur', () => {
+        if (input.value === '' || parseInt(input.value) < 0) input.value = 0;
+        if (parseInt(input.value) > 255) input.value = 255;
+        updateFromRgb();
+      });
+    });
+
+    // Event Listeners for Buttons
+    addBtn.addEventListener('click', () => {
+      addTile();
+      showToast('Ny firkant tilføjet');
+    });
+
+    removeBtn.addEventListener('click', () => {
+      removeLastTile();
+    });
+
+    clearBtn.addEventListener('click', () => {
+      clearTiles();
+    });
+
+    // Panel Collapse/Expand Functionality
+    let isCollapsed = false;
+    togglePanelBtn.addEventListener('click', () => {
+      isCollapsed = !isCollapsed;
+      if (isCollapsed) {
+        panelContent.classList.add('hidden');
+        toggleIcon.className = 'fa-solid fa-chevron-down';
+      } else {
+        panelContent.classList.remove('hidden');
+        toggleIcon.className = 'fa-solid fa-chevron-up';
+      }
+    });
+
+    // Responsive Window Resize recalculation
+    window.addEventListener('resize', () => {
+      updateGridDimensions();
+    });
+
+    // Initialize default page state with 4 random vibrant tiles
+    function init() {
+      const defaultColors = ['#3b82f6', '#ec4899', '#10b981', '#f59e0b'];
+      defaultColors.forEach(c => addTile(c));
+      updateFromPicker();
+    }
+
+    // Start App
+    window.onload = init;
+  </script>
+</body>
+</html>
